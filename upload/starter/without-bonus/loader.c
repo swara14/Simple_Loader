@@ -6,6 +6,14 @@ int fd , bytes_given;
 /*
  * release memory and other cleanups
  */
+void exit_program(size_t bytes_received){
+  if (bytes_received == -1)
+  {
+    exit(0);
+  }
+  return;  
+}
+
 void loader_cleanup() {
 
   // Free memory allocation for ehdr and phdr
