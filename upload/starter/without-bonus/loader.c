@@ -29,6 +29,20 @@ void loader_cleanup() {
   close(fd);
 
 }
+void print_memory(void *address, size_t size) {
+    unsigned char *mem = (unsigned char *)address;
+    
+    for (size_t i = 0; i < size; i++) {
+        if (mem[i] == '\0') {
+            // Print null-terminated string
+            printf("\n");
+        } else {
+            // Print character
+            printf("%c", mem[i]);
+        }
+    }
+}
+
 
 /*
  * Load and run the ELF executable file
