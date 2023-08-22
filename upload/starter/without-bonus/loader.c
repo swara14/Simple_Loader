@@ -38,7 +38,6 @@ void load_and_run_elf(char* exe) {
   fd = open(exe, O_RDONLY);
 
   // 1. Load entire binary content into the memory from the ELF file.
-  //printf("%d\n" , fd);
 
   ehdr = ( Elf32_Ehdr* )malloc(sizeof(Elf32_Ehdr));
   if (ehdr == NULL) {
@@ -46,19 +45,28 @@ void load_and_run_elf(char* exe) {
         exit(0);
   }
 
-  phdr = ( Elf32_Phdr*)malloc(sizeof( ehdr -> e_phentsize * ehdr-> e_phnum));
+  check_offset(lseek(fd, 0, SEEK_SET)); // Move to the beginning of the file
+  exit_program(read(fd, ehdr, sizeof(Elf32_Ehdr))); // Read the ELF header
+
+
+  phdr = ( Elf32_Phdr* )malloc(sizeof(Elf32_Phdr) * ehdr->e_phnum); 
   if (phdr == NULL) {
         printf("Memory not allocated.\n");
         exit(0);
   }
+  
+  check_offset(lseek(fd, 0, SEEK_SET));
+  check_offset( lseek(fd , ehdr -> e_phoff , SEEK_SET ) );
 
-  lseek(fd , ehdr -> e_phoff , SEEK_SET );
-
-  exit_program(read( fd , phdr , ehdr -> e_phentsize * ehdr -> e_phnum));
+  exit_program(read( fd , phdr , sizeof(Elf32_Phdr) * ehdr -> e_phnum));
 
   // 2. Iterate through the PHDR table and find the section of PT_LOAD type that contains the address of the entrypoint method in fib.c
 
+  //print_ehdr(ehdr);
+  //print_phdr( phdr ,ehdr->e_phnum );
+
   Elf32_Addr entry_pt = 0;
+
   for (int i = 0; i < ehdr -> e_phnum; i++)
   {
     if ( phdr[i].p_type == PT_LOAD )
@@ -68,31 +76,48 @@ void load_and_run_elf(char* exe) {
     }
   }
   
+  if (entry_pt == 0)
+  {
+    printf("Bad entry point\n");
+    exit(1);
+  }
+
   // 3. Allocate memory of the size "p_memsz" using mmap function and then copy the segment content
-  void *virtual_mem = mmap(NULL, phdr->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+  // EVERYTHNG CORRECT UPTIL NOW
+  void *virtual_mem = mmap(NULL, phdr->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE , 0, 0);  
   if (virtual_mem == MAP_FAILED) {
       perror("mmap");
       exit(1);
   }
+  
+  check_offset(lseek(fd, 0, SEEK_SET));
+  check_offset( lseek( fd , phdr->p_offset ,SEEK_SET ) );
 
-  // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
+  ssize_t bytes_read = read(fd, virtual_mem, phdr->p_filesz);
+  if (bytes_read == -1) {
+    perror("read");
+    exit(1);
+  }
+  if (bytes_read != phdr->p_filesz) {
+    printf("Warning: Read fewer bytes than expected.\n");
+  }
+  print_memory(virtual_mem, bytes_read);
 
-  lseek( fd , phdr->p_offset ,SEEK_SET );
-  exit_program(read( fd , virtual_mem , phdr->p_filesz ));
-  //printf("%d\n" , fd);
+  // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step  
+
+  Elf32_Addr entry_virtual = entry_pt - phdr->p_vaddr + phdr->p_offset;
 
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
+  
 
-  typedef int (*EntryPointFunction)();
-  EntryPointFunction _start = (EntryPointFunction)(entry_pt + (unsigned int)virtual_mem);
-  //printf("%d\n" , fd);
   // 6. Call the "_start" method and print the value returned from the "_start"
-
-  int result = _start();
+  
+  printf("Check\n");
+  //int result = _start();
   printf("%d\n" , fd);
 
   munmap(virtual_mem, phdr->p_memsz);
-  printf("User _start return value = %d\n",result);
+  //printf("User _start return value = %d\n",result);
   free(ehdr);
   free(phdr);
 }
