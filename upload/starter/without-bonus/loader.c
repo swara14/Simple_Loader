@@ -14,60 +14,30 @@ void exit_program(size_t bytes_received){
   }
   return;  
 }
-void print_ehdr(Elf32_Ehdr *ehdr) {
-    printf("ELF Header:\n");
-    printf("e_ident:\n");
-    for (int i = 0; i < EI_NIDENT; i++) {
-        printf("  e_ident[%d]: 0x%x\n", i, ehdr->e_ident[i]);
-    }
-    printf("e_type: 0x%x\n", ehdr->e_type);
-    printf("e_machine: 0x%x\n", ehdr->e_machine);
-    printf("e_version: 0x%x\n", ehdr->e_version);
-    printf("e_entry: 0x%x\n", ehdr->e_entry);
-    printf("e_phoff: 0x%x\n", ehdr->e_phoff);
-    printf("e_shoff: 0x%x\n", ehdr->e_shoff);
-    printf("e_flags: 0x%x\n", ehdr->e_flags);
-    printf("e_ehsize: 0x%x\n", ehdr->e_ehsize);
-    printf("e_phentsize: 0x%x\n", ehdr->e_phentsize);
-    printf("e_phnum: 0x%x\n", ehdr->e_phnum);
-    printf("e_shentsize: 0x%x\n", ehdr->e_shentsize);
-    printf("e_shnum: 0x%x\n", ehdr->e_shnum);
-    printf("e_shstrndx: 0x%x\n", ehdr->e_shstrndx);
-    printf("\n");
+
+// Loader cleanup 
+// Free memory allocation for ehdr and phdr
+void free_space(){
+    free(ehdr);
+    free(phdr);
 }
 
-void print_phdr(Elf32_Phdr *phdr, int phnum) {
-    printf("Program Headers:\n");
-    for (int i = 0; i < phnum; i++) {
-        printf("Segment %d:\n", i);
-        printf("p_type: 0x%x\n", phdr[i].p_type);
-        printf("p_offset: 0x%x\n", phdr[i].p_offset);
-        printf("p_vaddr: 0x%x\n", phdr[i].p_vaddr);
-        printf("p_paddr: 0x%x\n", phdr[i].p_paddr);
-        printf("p_filesz: 0x%x\n", phdr[i].p_filesz);
-        printf("p_memsz: 0x%x\n", phdr[i].p_memsz);
-        printf("p_flags: 0x%x\n", phdr[i].p_flags);
-        printf("p_align: 0x%x\n", phdr[i].p_align);
-        printf("\n");
+void unmapping_virtual_memory(){
+    if (virtual_mem != NULL) {
+        munmap(virtual_mem, phdr[0].p_memsz);
     }
-}
-
-/*void loader_cleanup() {
-
-  // Free memory allocation for ehdr and phdr
-  free(ehdr);
-  free(phdr);
-
-  // Unmapping the virtual memory allocated using mmap
-  if (virtual_mem != NULL) {
-    munmap(virtual_mem, phdr[0].p_memsz);
-  }
 
   // Closing the file descriptor if it was opened
-  close(fd);
+    close(fd);
+}
 
-}*/
-
+void checking_offset_1( off_t new_position ){
+  if ( new_position == -1 )
+  {
+    printf("Not able to seek\n");
+    exit(1);
+  }
+}
 
 void check_offset( off_t new_position ){
   if ( new_position == -1 )
@@ -152,18 +122,21 @@ void load_and_run_elf(char* exe) {
 
   munmap(virtual_mem, phdr->p_memsz);
   printf("User _start return value = %d\n",result);
-  free(ehdr);
-  free(phdr);
+  free_space();
 }
-bool perform_elf_checks(const char *exe) {
-  // Open the ELF file for reading
+
+bool check_file_read(const char* exe){
+// Open the ELF file for reading
   int fd = open(exe, O_RDONLY);
   if (fd < 0) {
     perror("Error opening ELF file");
     return false;
   }
+  return true;
+}
 
-  // Read the ELF header
+bool check_read_elf(const char* exe){
+// Read the ELF header
   Elf32_Ehdr ehdr;
   if (read(fd, &ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
     perror("Error reading ELF header");
@@ -176,6 +149,7 @@ bool perform_elf_checks(const char *exe) {
     close(fd);
     return false;
   }
+  return true;
 }
 
 int main(int argc, char** argv) 
@@ -185,14 +159,15 @@ int main(int argc, char** argv)
     exit(1);
   }
   // 1. carry out necessary checks on the input ELF file
-  if (!perform_elf_checks(argv[1])) {
-      fprintf(stderr, "Failed to pass ELF file checks\n");
+  if (!check_file_read(argv[1]) && !check_file_read(argv[1])) {
+      fprintf(stderr, "Failed to pass the ELF file checks\n");
       exit(1);
     }
 
   // 2. passing it to the loader for carrying out the loading/execution
   load_and_run_elf(argv[1]);
   // 3. invoke the cleanup routine inside the loader  
-  //loader_cleanup();
+  free_space();
+  unmapping_virtual_memory();
   return 0;
 }
