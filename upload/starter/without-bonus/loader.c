@@ -54,11 +54,11 @@ void find_entry_pt(){
   int min = 0xFFFFFFFF;
   for ( i = 0; i < ehdr -> e_phnum ; i++)
   {
-    if ( phdr[i].p_type == 0x5 || phdr[i].p_type == 0x6 )
+    if ( phdr[i].p_flags == 0x5 || phdr[i].p_flags == 0x6 )
     {
-      if (min > phdr[i].p_vaddr - ehdr->e_entry )
+      if (min > ehdr->e_entry - phdr[i].p_vaddr )
       {
-        min = phdr[i].p_vaddr - ehdr->e_entry;
+        min = ehdr->e_entry - phdr[i].p_vaddr;
         min_entrypoint = i;
       }
     }
@@ -131,8 +131,7 @@ void load_and_run_elf(char* exe) {
 
   munmap(virtual_mem, phdr->p_memsz);
   printf("User _start return value = %d\n",result);
-  free(ehdr);
-  free(phdr);
+  
 }
 
 bool check_file_read(const char* exe){
