@@ -9,6 +9,16 @@ void *entry_pt = NULL , *virtual_mem = NULL;
 /*
  * release memory and other cleanups
  */
+
+bool check_file_read(const char* exe){
+// Open the ELF file for reading
+  int fd = open(exe, O_RDONLY);
+  if (fd < 0) {
+    perror("Error opening ELF file");
+    return false;
+  }
+  return true;
+}
 void exit_program(size_t bytes_received){
   if (bytes_received == -1)
   {
