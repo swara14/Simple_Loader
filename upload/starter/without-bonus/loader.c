@@ -19,6 +19,7 @@ bool check_file_read(const char* exe){
   }
   return true;
 }
+
 void exit_program(size_t bytes_received){
   if (bytes_received == -1)
   {
@@ -58,6 +59,7 @@ void check_offset( off_t new_position ){
     exit(1);
   }
 }
+
 void find_entry_pt(){
   i = 0  ;
   min_entrypoint = 0;
@@ -185,6 +187,7 @@ int main(int argc, char** argv)
 
   // 2. passing it to the loader for carrying out the loading/execution
   load_and_run_elf(argv[1]);
+  
   // 3. invoke the cleanup routine inside the loader  
   free_space();
   unmapping_virtual_memory();
