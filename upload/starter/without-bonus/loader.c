@@ -1,8 +1,10 @@
 #include "loader.h"
+#include <stdbool.h>
 Elf32_Ehdr *ehdr;
 Elf32_Phdr *phdr;
-#include <stdbool.h>
-int fd , bytes_given;
+
+int fd , i ,min_entrypoint;
+void *entry_pt = NULL , *virtual_mem = NULL;
 
 /*
  * release memory and other cleanups
@@ -46,26 +48,57 @@ void check_offset( off_t new_position ){
     exit(1);
   }
 }
+void find_entry_pt(){
+  i = 0  ;
+  min_entrypoint = 0;
+  int min = 0xFFFFFFFF;
+  for ( i = 0; i < ehdr -> e_phnum ; i++)
+  {
+    if ( phdr[i].p_type == 0x5 || phdr[i].p_type == 0x6 )
+    {
+      if (min > phdr[i].p_vaddr - ehdr->e_entry )
+      {
+        min = phdr[i].p_vaddr - ehdr->e_entry;
+        min_entrypoint = i;
+      }
+    }
+  }
+  i = min_entrypoint;
+  entry_pt = &phdr[i];
+}
+
+void Load_memory(){
+  virtual_mem = mmap(NULL, phdr[i].p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE , 0, 0);  
+  if (virtual_mem == MAP_FAILED) {
+      printf("Error allocating virtual memory\n");
+      exit(1);
+  }
+  
+  check_offset(lseek(fd, 0, SEEK_SET));
+  check_offset( lseek( fd , phdr[1].p_offset ,SEEK_SET ) );
+
+  read(fd , virtual_mem ,phdr[1].p_memsz) ;
+}
 /*
  * Load and run the ELF executable file
  */
 void load_and_run_elf(char* exe) {
 
   fd = open(exe, O_RDONLY);
+  size_t size_of_phdr = sizeof( Elf32_Phdr ) ,size_of_ehdr = sizeof( Elf32_Ehdr); // of one segment
 
   // 1. Load entire binary content into the memory from the ELF file.
 
-  ehdr = ( Elf32_Ehdr* )malloc(sizeof(Elf32_Ehdr));
+  ehdr = ( Elf32_Ehdr* )malloc(size_of_ehdr);
   if (ehdr == NULL) {
         printf("Memory not allocated.\n");
         exit(0);
   }
 
-  check_offset(lseek(fd, 0, SEEK_SET)); 
-  exit_program(read(fd, ehdr, sizeof(Elf32_Ehdr))); 
-  printf("Entry Virtual Address: 0x%08x\n", ehdr->e_entry);  
+  check_offset( lseek(fd, 0, SEEK_SET) ); 
+  exit_program( read(fd, ehdr, size_of_ehdr) );
 
-  phdr = ( Elf32_Phdr* )malloc(sizeof(Elf32_Phdr) * ehdr->e_phnum); 
+  phdr = ( Elf32_Phdr* )malloc( size_of_phdr * ehdr->e_phnum); 
   if (phdr == NULL) {
         printf("Memory not allocated.\n");
         exit(0);
@@ -73,43 +106,19 @@ void load_and_run_elf(char* exe) {
   
   check_offset(lseek(fd, 0, SEEK_SET));
   check_offset( lseek(fd , ehdr -> e_phoff , SEEK_SET ) );
-  exit_program(read( fd , phdr , sizeof(Elf32_Phdr) * ehdr -> e_phnum));
-
-  print_ehdr(ehdr);
-  print_phdr( phdr , ehdr -> e_phnum);
+  exit_program(read( fd , phdr , size_of_phdr * ehdr -> e_phnum));
 
   // 2. Iterate through the PHDR table and find the section of PT_LOAD type that contains the address of the entrypoint method in fib.c
 
-  void *entry_pt = NULL;
-  int i = 0;
-  for (i = 0; i < ehdr -> e_phnum; i++)
-  {
-    if ( phdr[i].p_type == PT_LOAD )
-    {
-      entry_pt = &phdr[i]; 
-      break;
-    }
-  }
-  entry_pt = &phdr[1]; 
+  find_entry_pt();
 
   // 3. Allocate memory of the size "p_memsz" using mmap function and then copy the segment content
 
-  void *virtual_mem = mmap(NULL, phdr[1].p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE , 0, 0);  
-  if (virtual_mem == MAP_FAILED) {
-      perror("mmap");
-      exit(1);
-  }
-  
-
-  check_offset(lseek(fd, 0, SEEK_SET));
-  check_offset( lseek( fd , phdr[1].p_offset ,SEEK_SET ) );
-
-  read(fd , virtual_mem ,phdr[1].p_memsz) ;
+  Load_memory();
   
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step  
   
-  void *entry_virtual = virtual_mem + ehdr-> e_entry - phdr[1].p_vaddr;
-  printf("Entry Virtual Address: 0x%08x\n", entry_virtual );  
+  void *entry_virtual = virtual_mem + ehdr-> e_entry - phdr[i].p_vaddr;
 
   // 5. Typecast the address to that of a function pointer matching "_start" method in fib.c.
 
@@ -122,7 +131,8 @@ void load_and_run_elf(char* exe) {
 
   munmap(virtual_mem, phdr->p_memsz);
   printf("User _start return value = %d\n",result);
-  free_space();
+  free(ehdr);
+  free(phdr);
 }
 
 bool check_file_read(const char* exe){
