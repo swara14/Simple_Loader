@@ -1,6 +1,7 @@
 #include "loader.h"
 Elf32_Ehdr *ehdr;
 Elf32_Phdr *phdr;
+//declaring global variables
 int fd , i ,min_entrypoint;
 Elf32_Addr entry_pt = 0 ;
 void *virtual_mem = NULL;
@@ -88,7 +89,7 @@ void load_ehdr( size_t size_of_ehdr ){
  * Load and run the ELF executable file
  */
 
-// Find the appropriate entry point in the program headers
+// Find the appropriate entry point in the program headers corres to PT_LOAD
 void find_entry_pt(){
   i = 0  ;
   min_entrypoint = 0;
@@ -161,13 +162,13 @@ void load_and_run_elf(char* exe) {
   int result = _start();
 
   // Cleanup and display result
-  munmap(virtual_mem, phdr->p_memsz);
   printf("User _start return value = %d\n", result);
 
 }
 
 int main(int argc, char** argv) 
 {
+// checking if we get 2 arguments into the main
   if(argc != 2) {
     printf("Usage: %s <ELF Executable> \n",argv[0]);
     exit(1);
