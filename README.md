@@ -1,4 +1,3 @@
-# Simple_Loader_OS_1
 ASSIGNMENT -1 
 
 SIMPLE LOADER: AN ELF LOADER IN C FROM SCRATCH
@@ -32,16 +31,18 @@ It allocates memory using Load_memory for the chosen segment.
 It calculates the virtual memory address of the entry point and casts it to a function pointer _start. It calls _start and prints the result.
 
 
+Note: We have modified the definition of load_and_run_elf( char **exe ) to load_and_run_elf( char *exe ) as there was an error in the starter files
+
 CONTRIBUTIONS:
 
 Shrutya Chawla (2022487): 
 Construction of the load and run elf function, handling the core logic of ELF loading and execution.
 Implemented the find_entry_pt function, iterating through program headers to identify the segment closest to the entry point.
 Devised calculating the entry point virtual address and typecasting it to _start function pointer.
-Crafted the checking_offset_1 and check_offset functions to verify offset values’ validity during the file operations.
+Crafted the check_offset functions to verify offset values’ validity during the file operations.
 
 Swara Parekh (2022524): 
-Implemented the check_file_read function to open and validate the ELF file for reading, providing a boolean result.
+Implemented the open_elf function to open and validate the ELF file for reading, providing a boolean result.
 Managed the cleanup phase of the loader by designing free_space and unmapping_virtual_memory functions.
 Defined the Load_memory function to allocate memory using mmap and load segment content from the ELF file.
 Contributed to the comprehensive main function that validates command-line arguments, loads and runs the elf file, and manages cleanup.
