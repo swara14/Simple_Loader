@@ -14,15 +14,6 @@ void free_space(){
     free(phdr);
 }
 
-// Check if the ELF file can be opened for reading
-void check_file_read(const char* exe){
-  int fd = open(exe, O_RDONLY);
-  if (fd < 0) {
-    printf("Error opening ELF file\n");
-    exit(1);
-  }
-}
-
 // Unmap virtual memory and close the file descriptor
 void unmapping_virtual_memory(){
     if (virtual_mem != NULL) {
