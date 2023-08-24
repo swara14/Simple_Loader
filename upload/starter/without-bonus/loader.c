@@ -137,6 +137,7 @@ void open_elf( char* exe ){
 
 // Load and execute the ELF executable
 void load_and_run_elf(char* exe) {
+  open_elf(exe);
 
   size_t size_of_phdr = sizeof( Elf32_Phdr ) ,size_of_ehdr = sizeof( Elf32_Ehdr); // size of one program header
 
